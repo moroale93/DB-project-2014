@@ -1,0 +1,121 @@
+1)le possibili amicizie di persone che non sono gi� amiche che lavorano o studiano nello stesso posto di lavoro o scuola di una certa persona (colleghi che potrebbe conoscere)
+
+drop view if exists LuoghiPersona;
+create view LuoghiPersona as(
+		select p.EmailUser as Utente, l.CAP as CAP, l.Nome as Nome
+		from Persone p, PersoneLuoghi pl, Luoghi l
+		where pl.IdLuogo=l.CAP and p.EmailUser=pl.EmailUser
+		UNION
+		select p.EmailUser as Utente, l.CAP as CAP, l.Nome as Nome
+		from Persone p, Scuole s, Luoghi l
+		where s.IdLuogo=l.CAP and p.Idscuola=s.Idscuola
+		UNION
+		select p.EmailUser as Utente, l.CAP as CAP, l.Nome as Nome
+		from Persone p, PostiDiLavoro pdl, Luoghi l
+		where pdl.IdLuogo=l.CAP and p.IdLavoro=pdl.IdImpresa
+	)
+
+select *
+from LuoghiPersona lp1, LuoghiPersona lp2
+where lp1.CAP=lp2.CAP and lp1.utente<lp2.utente and not exists(
+		select *
+		from amicizie a
+		where ((a.EmailUser =lp1.Utente AND a.IdAmico=lp2.Utente) OR (a.EmailUser =lp2.Utente AND a.IdAmico=lp1.Utente)) AND a.DataAmicizia is not null
+	)and lp1.Utente<lp2.Utente
+
+2)la bacheche di gruppi con il maggior numero di iscitti e quelle con meno
+
+(
+	select count(g.Idgruppo)as num_iscritti, Nome
+	from GruppiPersone gp, Gruppi g
+	where gp.IdGruppo=g.IdGruppo
+	group by g.IdGruppo
+	order by count(g.IdGruppo) DESC
+	limit 1
+)UNION(
+	select count(g.IdGruppo)as num_iscritti, Nome
+	from GruppiGersone gp, Gruppi g
+	where gp.IdGruppo=g.IdGruppo
+	group by g.IdGruppo
+	order by count(g.IdGruppo) ASC
+	limit 1
+)
+3)numero di persone che sono state o stanno un un determinato luogo
+
+select count(*) as numPersone, tutti.CAP, tutti.nome as Nome_Luogo
+from (
+	select p.EmailUser as utente, l.CAP as CAP, l.Nome as nome
+	from Persone p, PersoneLuoghi pl, Luoghi l
+	where pl.IdLuogo=l.CAP and p.EmailUser=pl.EmailUser
+	UNION
+	select p.EmailUser as utente, l.CAP as CAP, l.Nome as nome
+	from Persone p, Scuole s, Luoghi l
+	where s.IdLuogo=l.CAP and p.IdScuola=s.IdScuola
+	UNION
+	select p.EmailUser as utente, l.CAP as CAP, l.Nome as nome
+	from Persone p, PostiDiLavoro pdl, Luoghi l
+	where pdl.IdLuogo=l.CAP and p.IdLavoro=pdl.IdImpresa
+) as tutti
+group by tutti.CAP;
+
+4)lista amicizie confermate
+
+select p1.EmailUser as id_Persona1, p1.Nome as Nome_Persona1,p1.Cognome as Cognome_Persona1, p2.EmailUser as id_Persona2, p2.Nome as Nome_Persona2,p2.Cognome as Cognome_Persona2
+from Persone p1, Amicizie a, Persone p2 
+where DataAmicizia is not null and p1.EmailUser=a.EmailUser AND a.IdAmico = p2.EmailUser
+
+5)codice del post di ogni persona che ha ricevuto più apprezzamenti
+
+select st.user, max(num_like)
+from(
+	    select pe.emailuser as user, b.idbacheca as bachecapost, po.idpost as post, count(*) as num_like
+	    from Persone pe, Bacheche b, Post po, Likes l
+	    where pe.IdBacheca=b.IdBacheca /*è una bacheca di una persona e non di un gruppo*/ AND po.IdBacheca=b.IdBacheca /*è un post nella sua bacheca*/ AND l.IdPost=po.Idpost /*il like è stato messo in suo post*/
+	    group by po.Idpost
+    )st
+group by st.bachecapost
+
+6)email degli utenti che hanno condiviso nessun post o di queli che hanno condiviso solo post dello stesso tipo
+
+select ris_union.email as Email_Utenti
+from (
+        select p.EmailUser as email
+        from Persone p natural join Bacheche b 
+    	where b.IdBacheca <> all (
+            select IdBacheca
+            from Post
+        )
+        UNION
+        select p.EmailUser as email
+        from Persone p natural join Bacheche b
+        where b.IdBacheca <> ALL(
+            select IdBacheca
+            from Post natural join Foto
+        )
+        UNION
+        select p.EmailUser as email
+        from Persone p natural join Bacheche b
+        where b.IdBacheca <> ALL(
+            select IdBacheca
+            from Post natural join Stati
+        )
+	) ris_union
+
+
+query extra di aiuto
+
+7)coppie di amici (con amicizia accettata)
+
+select p1.EmailUser as pers1, p2.EmailUser as pers2
+from Persone p1, Amicizie a, Persone p2
+where DataAmicizia is not null and p1.EmailUser=a.EmailUser AND a.IdAmico = p2.EmailUser
+
+8)lista delle coppie di non amici (inclusi quelle amicizie che devono ancora esser confermate)
+
+select p1.EmailUser, p2.EmailUser
+from Persone p1, Persone p2
+where not exists(
+		select *
+		from Amicizie a
+		where ((a.EmailUser =p1.EmailUser AND a.IdAmico=p2.EmailUser) OR (a.EmailUser =p2.EmailUser AND a.IdAmico=p1.EmailUser)) AND a.DataAmicizia is not null
+	)and p1.EmailUser<p2.EmailUser

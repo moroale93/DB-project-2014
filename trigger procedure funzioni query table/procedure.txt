@@ -1,0 +1,267 @@
+1)registra persona
+
+delimiter $
+create procedure Registra_Persona (IN Email varchar(40), pass varchar(100), Nome varchar(20), Cognome varchar(20), DataNascita date)
+BEGIN
+	declare maxIdBac BIGINT;
+	insert into Bacheche(NumeroBanner) values(0);
+	select max(IdBacheca) INTO maxIdBac from Bacheche;
+	insert into Persone(EmailUser,Psw,Nome,Cognome,DataDiNascita,IdBacheca)
+	values(Email,pass,Nome,Cognome,DataNascita,maxIdBac);
+END $
+delimiter ;
+
+2)inserisci foto
+
+delimiter $
+create procedure Posta_Foto (IN Email varchar(40), foto longblob,CAPLuogo integer,NomeLuogo varchar(20),altitudineLuogo integer,StatoLuogo varchar(20))
+BEGIN
+	declare maxIdPost BIGINT;
+	declare idBach BIGINT;
+	declare esisteLuogo integer;
+	select max(IdBacheca) into idBach from Persone where EmailUser=Email;
+	if CAPLuogo<>0 then
+	select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if(esisteLuogo=0)then
+		insert into Luoghi(CAP, Nome, Altitudine, Stato)
+		values(CAPLuogo,NomeLuogo,altitudineLuogo,StatoLuogo);
+	end if;
+	insert into Post(DataPost,Ora,IdBacheca,IdLuogo)
+	values(CURDATE(),CURTIME(),idBach,CAPLuogo);
+	ELSE
+insert into Post(DataPost,Ora,IdBacheca)
+	values(CURDATE(),CURTIME(),idBach);
+end if;
+	select max(IdPost) into maxIdPost from Post;
+	insert into Foto(IdPost, Fotografia)
+	values (maxIdPost, foto);
+END $
+delimiter ;
+
+3)inserisci stato
+
+delimiter $
+create procedure Posta_Stato (IN Email varchar(40), stato varchar(4096),CAPLuogo integer,NomeLuogo varchar(20),altitudineLuogo integer,StatoLuogo varchar(20))
+BEGIN
+	declare maxIdPost BIGINT;
+	declare idBach BIGINT;
+	declare esisteLuogo integer;
+	select max(IdBacheca) into idBach from Persone where EmailUser=Email;
+	if CAPLuogo<>0 then
+	select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if(esisteLuogo=0)then
+		insert into Luoghi(CAP, Nome, Altitudine, Stato)
+		values(CAPLuogo,NomeLuogo,altitudineLuogo,StatoLuogo);
+	end if;
+	insert into Post(DataPost,Ora,IdBacheca,IdLuogo)
+	values(CURDATE(),CURTIME(),idBach,CAPLuogo);
+ELSE
+insert into Post(DataPost,Ora,IdBacheca)
+	values(CURDATE(),CURTIME(),idBach);
+end if;
+
+	select max(IdPost) into maxIdPost from Post;
+	insert into Stati(IdPost, Testo)
+	values (maxIdPost, stato);
+END $
+delimiter ;
+
+4)inserisci gruppo
+
+delimiter $
+create procedure Crea_Gruppo(NomeGruppo varchar(20))
+BEGIN
+	declare maxIdBac BIGINT;
+	insert into Bacheche(NumeroBanner) values(0);
+	select max(IdBacheca) INTO maxIdBac from Bacheche;
+	insert into Gruppi(Nome,DataCreazione,IdBacheca)
+	values(NomeGruppo, CURDATE(), maxIdBac);
+END $
+delimiter ;
+
+5)iscriviti a gruppo
+
+delimiter $
+create procedure Iscrizione_Gruppo(email varchar(40), idGroup BIGINT)
+BEGIN
+	insert into GruppiPersone(EmailUser,IdGruppo)
+	values(email, IdGroup);
+END $
+delimiter ;
+
+6)chiedi amicizia
+
+delimiter $
+create procedure Richiedi_Amicizia(emailMittente varchar(40), emailDestinatario varchar(40))
+BEGIN
+	insert into Amicizie(EmailUser,IdAmico)
+	values(emailMittente, emailDestinatario);
+END $
+delimiter ;
+
+7)accetta amicizia
+
+delimiter $
+create procedure Accetta_Amicizia(emailAccettante varchar(40), emailDestinatario varchar(40))
+BEGIN
+	declare esiste_richiesta INTEGER;
+	select Count(*) into esiste_richiesta from Amicizie where IdAmico=emailAccettante AND EmailUser=emailDestinatario AND DataAmicizia is null;
+	IF esiste_richiesta=1 THEN
+		update Amicizie set dataAmicizia=CURDATE() where IdAmico=emailAccettante AND EmailUser=emailDestinatario;
+	END IF;
+END $
+delimiter ;
+
+8)mettere mi piace
+
+delimiter $
+create procedure Like_Post(id_post BIGINT, emailLiker varchar(40))
+BEGIN
+	insert into Likes(EmailUser,IdPost)
+	values(emailLiker, id_post);
+END $
+delimiter ;
+
+9)visita un posto
+
+delimiter $
+create procedure Visita_Luogo (IN Email varchar(40), CAPLuogo integer,NomeLuogo varchar(20),altitudineLuogo integer,StatoLuogo varchar(20))
+BEGIN
+	declare esisteLuogo integer;
+	select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if(esisteLuogo=0)then
+		insert into Luoghi(CAP, Nome, Altitudine, Stato)
+		values(CAPLuogo,NomeLuogo,altitudineLuogo,StatoLuogo);
+	end if;
+	insert into PersoneLuoghi(EmailUser,IdLuogo)
+	values(Email, CAPLuogo);
+END $
+delimiter ;
+
+10)inserire foto su gruppo
+
+delimiter $
+create procedure Posta_Foto_Su_Gruppo (gruppo BIGINT, foto longblob,CAPLuogo integer,NomeLuogo varchar(20),altitudineLuogo integer,StatoLuogo varchar(20))
+BEGIN
+	declare maxIdPost BIGINT;
+	declare idBach BIGINT;
+	declare esisteLuogo integer;
+	select max(IdBacheca) into idBach from Gruppi where IdGruppo=gruppo;
+	select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if CAPLuogo<>0 then
+		select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if(esisteLuogo=0)then
+		insert into Luoghi(CAP, Nome, Altitudine, Stato)
+		values(CAPLuogo,NomeLuogo,altitudineLuogo,StatoLuogo);
+	end if;
+	insert into Post(DataPost,Ora,IdBacheca,IdLuogo)
+	values(CURDATE(),CURTIME(),idBach,CAPLuogo);
+	else
+		insert into Post(DataPost,Ora,IdBacheca)
+		values(CURDATE(),CURTIME(),idBach);
+	end if;
+	select max(IdPost) into maxIdPost from Post;
+	insert into Foto(IdPost, Fotografia)
+	values (maxIdPost, foto);
+END $
+delimiter ;
+
+11)inserire stato su gruppo
+
+delimiter $
+create procedure Posta_Stato_Su_Gruppo (gruppo BIGINT, stato varchar(4096),CAPLuogo integer,NomeLuogo varchar(20),altitudineLuogo integer,StatoLuogo varchar(20))
+BEGIN
+	declare maxIdPost BIGINT;
+	declare idBach BIGINT;
+	declare esisteLuogo integer;
+	select max(IdBacheca) into idBach from Gruppi where IdGruppo=gruppo;
+	select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if CAPLuogo<>0 then
+		select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if(esisteLuogo=0)then
+		insert into Luoghi(CAP, Nome, Altitudine, Stato)
+		values(CAPLuogo,NomeLuogo,altitudineLuogo,StatoLuogo);
+	end if;
+	insert into Post(DataPost,Ora,idBacheca,IdLuogo)
+	values(CURDATE(),CURTIME(),idBach,CAPLuogo);
+	else
+		insert into Post(DataPost,Ora,IdBacheca)
+		values(CURDATE(),CURTIME(),idBach);
+	end if;
+	select max(IdPost) into maxIdPost from Post;
+	insert into Stati(IdPost, Testo)
+	values (maxIdPost, stato);
+END $
+delimiter ;
+
+12)frequentare una scuola
+
+delimiter $
+create procedure Studia_Presso (IN Email varchar(40), nomeScuola varchar(20),GradoScuola varchar(20),dataFondazioneScuola date,CAPLuogo integer,NomeLuogo varchar(20),altitudineLuogo integer,StatoLuogo varchar(20))
+BEGIN
+	declare esisteScuola integer;
+	declare esisteLuogo integer;
+	declare idSc bigint;
+	select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if(esisteLuogo=0)then
+		insert into luoghi(CAP, Nome, Altitudine, Stato)
+values(CAPLuogo,NomeLuogo,altitudineLuogo,StatoLuogo);
+	end if;
+	insert into Scuole(Nome, Grado, DataFondazione,IdLuogo)
+		values (nomeScuola, GradoScuola, dataFondazioneScuola, CAPLuogo);
+		select max(IdScuola) into idSc from Scuole;
+	update Persone set IdScuola=idSc where EmailUser=Email;
+END $
+delimiter ;
+
+13)frequentare un posto di lavoro
+
+delimiter $
+create procedure Lavora_Presso (IN Email varchar(40), nomeImp varchar(20),nomeDatoreLavoro varchar(20),dataFondazioneImp date,CAPLuogo integer,NomeLuogo varchar(20),altitudineLuogo integer,StatoLuogo varchar(20))
+BEGIN
+	declare esistePostoLav integer;
+	declare esisteLuogo integer;
+	declare idLa bigint;
+	select count(CAP) into esisteLuogo from Luoghi where CAP=CAPLuogo;
+	if(esisteLuogo=0)then
+		insert into Luoghi(CAP, Nome, Altitudine, Stato) values(CAPLuogo,NomeLuogo,altitudineLuogo,StatoLuogo);
+	end if;
+		insert into PostiDiLavoro(Nome, NomeDatore, DataFondazione,IdLuogo)
+		values (nomeImp, nomeDatoreLavoro, dataFondazioneImp, CAPLuogo);
+		select max(IdImpresa) into idLa from PostiDiLavoro;	update Persone set IdLavoro=idLa where EmailUser=Email;
+END $
+delimiter ;
+
+14)	disiscrivi una persona da un gruppo
+
+delimiter $
+create procedure Disiscrizione_Gruppo(email varchar(40), idGroup BIGINT)
+BEGIN
+	delete from GruppiPersone
+	where EmailUser=email AND IdGruppo=idGroup;
+END $
+delimiter ;
+
+15)	rimuovi amico
+
+delimiter $
+create procedure Rimuovi_Amicizia(emailMittente varchar(40), emailDestinatario varchar(40))
+BEGIN
+	delete from Amicizie
+	where (EmailUser=emailMittente AND IdAmico=emailDestinatario) OR (IdAmico=emailMittente AND EmailUser=emailDestinatario) and DataAmicizia is not null;
+END $
+delimiter ;
+
+16)Elimina account
+
+delimiter $
+create procedure Rimuovi_Account(email varchar(40))
+BEGIN
+	declare idbac BIGINT;
+	select max(IdBacheca) into idbac from Persone where EmailUser=email;
+	delete from Persone
+	where EmailUser=email;
+	delete from Bacheche
+	where IdBacheca=idbac;
+END $
+delimiter ;

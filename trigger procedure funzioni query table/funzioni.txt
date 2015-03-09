@@ -1,0 +1,23 @@
+1)numero delle amicizie confermate
+
+delimiter $
+create function num_amici(persona varchar(40)) returns INTEGER
+BEGIN
+	declare ret integer;
+	select count(*) into ret from Amicizie where (EmailUser=persona OR IdAmico=persona) and DataAmicizia is not null;
+	return ret;
+END $
+delimiter ;
+
+2)calcola il numero di post di una certa persona
+
+delimiter $
+create function num_post(persona varchar(40)) returns INTEGER
+BEGIN
+	declare ret integer;
+	declare bacheca BIGINT;
+	select max(IdBacheca) into bacheca from Persone where EmailUser=persona;
+	select count(*) into ret from Post where IdBacheca=bacheca;
+	return ret;
+END $
+delimiter ;

@@ -1,0 +1,82 @@
+1)controlla l'et� (non si può essere minorenni)
+
+delimiter $
+create trigger controllo_eta_e_password
+BEFORE INSERT ON Persone
+FOR EACH ROW
+BEGIN
+	IF (DATEDIFF(NOW(),NEW.DataDiNascita)<6570) THEN
+		insert into Error(error_id, error_type)
+		values ("1001","Utente minorenne ha cercato di registrarsi!");
+	END IF;
+END $
+delimiter ;
+
+2)cancella gruppo se non c'è più neanche una persona che lo forma
+
+delimiter $
+create trigger rimozione_dati_gruppo_se_vuoto
+AFTER DELETE ON GruppiPersone
+FOR EACH ROW
+BEGIN
+	declare id_gruppo_da_cancellare BIGINT default 0;
+    declare idBacDaSvuotare BIGINT default 0;
+	SELECT IdGruppo INTO id_gruppo_da_cancellare From GruppiPersone group by IdGruppo HAVING count(*)=0;
+	IF id_gruppo_da_cancellare =0 THEN        
+		SELECT IdBacheca INTO idBacDaSvuotare FROM Gruppi WHERE IdGruppo=id_gruppo_da_cancellare;
+		DELETE FROM Bacheche WHERE IdBacheca=idBacDaSvuotare;
+	END IF;
+END $
+delimiter ;
+
+3)aumenta il numero di banner pubblicitari (max 6 a bacheca) in base al grado di popolarit�
+
+delimiter $
+create trigger add_banner
+AFTER UPDATE ON Amicizie
+FOR EACH ROW
+BEGIN
+	DECLARE numAmiciA INTEGER default 0;
+	DECLARE numAmiciB INTEGER default 0;
+	DECLARE AmicoA varchar(40) default 0;
+	DECLARE AmicoB varchar(40) default 0;
+	DECLARE IdBachecaAmicoA INTEGER default 0;
+	DECLARE IdBachecaAmicoB INTEGER default 0;
+	DECLARE BannerAmicoA INTEGER;
+	DECLARE BannerAmicoB INTEGER;
+	SET AmicoA=new.EmailUser;
+	SET AmicoB=new.idAmico;
+	SELECT count(*) INTO numAmiciA FROM Amicizie WHERE (EmailUser=AmicoA OR IdAmico=AmicoA) AND DataAmicizia IS NOT NULL;
+	SELECT count(*) INTO numAmiciB FROM Amicizie WHERE (EmailUser=AmicoB OR IdAmico=AmicoB) AND DataAmicizia IS NOT NULL;
+	SELECT max(IdBacheca) INTO IdBachecaAmicoA FROM Persone WHERE EmailUser=AmicoA;
+	SELECT max(IdBacheca) INTO IdBachecaAmicoB FROM Persone WHERE EmailUser=AmicoB;
+	SELECT max(NumeroBanner) INTO BannerAmicoA FROM Bacheche WHERE IdBacheca=IdBachecaAmicoA;
+	SELECT max(NumeroBanner) INTO BannerAmicoB FROM Bacheche WHERE IdBacheca=IdBachecaAmicoB;
+	
+	IF numAmiciA>0 AND numAmiciA<10 THEN IF BannerAmicoA <> 1 THEN UPDATE Bacheche SET numeroBanner=1 WHERE idBacheca=IdBachecaAmicoA; END IF;
+		else IF numAmiciA>9 AND numAmiciA<30 THEN IF BannerAmicoA <> 2 THEN UPDATE Bacheche SET numeroBanner=2 WHERE idBacheca=IdBachecaAmicoA; END IF;
+			else IF numAmiciA>29 AND numAmiciA<150 THEN IF BannerAmicoA <> 3 THEN UPDATE Bacheche SET numeroBanner=3 WHERE idBacheca=IdBachecaAmicoA; END IF;
+				else IF numAmiciA>149 AND numAmiciA<500 THEN IF BannerAmicoA <> 4 THEN UPDATE Bacheche SET numeroBanner=4 WHERE idBacheca=IdBachecaAmicoA; END IF;
+					else IF numAmiciA>499 AND numAmiciA<1000 THEN IF BannerAmicoA <> 5 THEN UPDATE Bacheche SET numeroBanner=5 WHERE idBacheca=IdBachecaAmicoA; END IF;
+						else IF numAmiciA>999 THEN IF BannerAmicoA <> 6 THEN UPDATE Bacheche SET numeroBanner=6 WHERE idBacheca=IdBachecaAmicoA; END IF;
+						END IF;
+					END IF;
+				END IF;
+			END IF;
+		END IF;
+	END IF;
+	
+	IF numAmiciB>0 AND numAmiciB<10 THEN IF BannerAmicoB <> 1 THEN UPDATE Bacheche SET numeroBanner=1 WHERE idBacheca=IdBachecaAmicoB; END IF;
+	else IF numAmiciB>9 AND numAmiciB<30 THEN IF BannerAmicoB <> 2 THEN UPDATE Bacheche SET numeroBanner=2 WHERE idBacheca=IdBachecaAmicoB; END IF;
+			else IF numAmiciB>29 AND numAmiciB<150 THEN IF BannerAmicoB <> 3 THEN UPDATE Bacheche SET numeroBanner=3 WHERE idBacheca=IdBachecaAmicoB; END IF;
+				else IF numAmiciB>149 AND numAmiciB<500 THEN IF BannerAmicoB <> 4 THEN UPDATE Bacheche SET numeroBanner=4 WHERE idBacheca=IdBachecaAmicoB; END IF;
+					else IF numAmiciB>499 AND numAmiciB<1000 THEN IF BannerAmicoB <> 5 THEN UPDATE Bacheche SET numeroBanner=5 WHERE idBacheca=IdBachecaAmicoB; END IF;
+						else IF numAmiciB>999 THEN IF BannerAmicoB <> 6 THEN UPDATE Bacheche SET numeroBanner=6 WHERE idBacheca=IdBachecaAmicoB; END IF;
+						END IF;
+					END IF;
+				END IF;
+			END IF;
+		END IF;
+	END IF;
+END $
+delimiter ;
